@@ -5,7 +5,7 @@ public class Main {
         
         AlgoritmoGenetico ag = new AlgoritmoGenetico(100, 7, new double[]{-1,2}, 7);
         ag.mostrarPopulacao();
-        ag.evoluir(200);
+        ag.evoluir(2000);
         ag.mostrarPopulacao();
         
     }

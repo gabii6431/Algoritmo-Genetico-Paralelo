@@ -7,7 +7,7 @@ import java.util.Random;
 
 
 
-public class AlgoritmoGenetico implements Comparator<Individuo>{
+public class AlgoritmoGenetico{
     
     private ArrayList<Individuo> populacao;
     private int probabilidadeMutacao;
@@ -24,8 +24,8 @@ public class AlgoritmoGenetico implements Comparator<Individuo>{
             System.out.println("Geração ("+numGeracoes+")");
             ArrayList<Individuo> novaPopulacao = new ArrayList<Individuo>();
             while(novaPopulacao.size() < populacao.size()) {
-                IndividuoBinario i1 = (IndividuoBinario) op.torneio(populacao);
-                IndividuoBinario i2 = (IndividuoBinario) op.torneio(populacao);
+                IndividuoBinario i1 = (IndividuoBinario) op.roleta(populacao);
+                IndividuoBinario i2 = (IndividuoBinario) op.roleta(populacao);
                 IndividuoBinario filhos[] = op.crossover(i1, i2);
                 op.mutacao(filhos[0], probabilidadeMutacao);
                 op.mutacao(filhos[1], probabilidadeMutacao);
@@ -37,15 +37,26 @@ public class AlgoritmoGenetico implements Comparator<Individuo>{
         }
     }
     
-    public void evoluirElitismo(int numGeracoes, int porcentagemSelecao) {
+        public void evoluirElitismo(int numGeracoes, int porcentagemSelecao) {
         Operacoes op = new Operacoes();
+        int aux = 0;
+        int quantidadeElitismo = populacao.size() * (porcentagemSelecao/100);
+        
         while(numGeracoes > 0) {
             System.out.println("Geração ("+numGeracoes+")");
             ArrayList<Individuo> novaPopulacao = new ArrayList<Individuo>();
-            //Collections.sort(populacao);
+            Collections.sort(populacao, (a,b) -> a.getAptidao() < b.getAptidao() ? -1: a.getAptidao() > b.getAptidao() ? 1:0);
+            while(aux != quantidadeElitismo){
+                novaPopulacao.add(populacao.get(aux));
+                aux++;
+            }
+            if(quantidadeElitismo % 2 != 0){
+                IndividuoBinario aleatorio = (IndividuoBinario) op.roleta(populacao);
+                novaPopulacao.add(aleatorio);
+            }
             while(novaPopulacao.size() < populacao.size()) {
-                IndividuoBinario i1 = (IndividuoBinario) op.torneio(populacao);
-                IndividuoBinario i2 = (IndividuoBinario) op.torneio(populacao);
+                IndividuoBinario i1 = (IndividuoBinario) op.roleta(populacao);
+                IndividuoBinario i2 = (IndividuoBinario) op.roleta(populacao);
                 IndividuoBinario filhos[] = op.crossover(i1, i2);
                 op.mutacao(filhos[0], probabilidadeMutacao);
                 op.mutacao(filhos[1], probabilidadeMutacao);
@@ -84,15 +95,5 @@ public class AlgoritmoGenetico implements Comparator<Individuo>{
     private double log2(double valor) {
         return Math.log10(valor)/Math.log10(2);
     } 
-
-    @Override //decrescente ?????
-    public int compare(Individuo t, Individuo t1) {
-        if(t.getAptidao() > t1.getAptidao()){
-            return 1;
-        }
-        else{
-            return -1;
-        }
-    }
     
 }

@@ -79,16 +79,8 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         
         System.out.printf(" Aptidão = %."+precisao+"f",getAptidao());
         
+        System.out.printf("f(x) = %."+precisao+"f",(1/getAptidao()));
+        
         System.out.println();
-    }
-
-    @Override
-    public int compare(Individuo i1, Individuo i2) {
-        if(i1.getAptidao() > i2.getAptidao()){
-            
-        }
-        else{
-            
-        }
     }
 }
