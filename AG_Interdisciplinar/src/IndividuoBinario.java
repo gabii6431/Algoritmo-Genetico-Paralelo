@@ -41,7 +41,12 @@ public class IndividuoBinario extends Individuo<int[],Double> {
     @Override
     public double getAptidao() {
         double x = getFenotipo();
-        return 1/((x*Math.sin(10*x*Math.PI)+1)+0.001);
+        return 1/(Math.pow(2,(x*Math.sin(10*x*Math.PI)+1)));
+    }
+    
+    public double funcao(){
+        double x = getFenotipo();
+        return (x*Math.sin(10*x*Math.PI)+1);
     }
     
     // Método para retornar o tamanho do cromossomo.
@@ -79,7 +84,7 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         
         System.out.printf(" Aptidão = %."+precisao+"f",getAptidao());
         
-        System.out.printf("f(x) = %."+precisao+"f",(1/getAptidao()));
+        System.out.printf("f(x) = %."+precisao+"f",funcao());
         
         System.out.println();
     }
