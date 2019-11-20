@@ -12,14 +12,13 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     private ArrayList<Individuo> populacao;
     private int probabilidadeMutacao;
     private ArrayList<Individuo> individuosRecebidos;
-    Thread tr = new Thread();
+    ThreadVerifica tr = new ThreadVerifica();
     
     
     public AlgoritmoGenetico(int tamanhoPopulacao,int probabilidadeMutacao,double intervalo[],int precisao) throws RemoteException{
         populacao = new ArrayList<Individuo>();
         individuosRecebidos = new ArrayList<Individuo>();
         this.probabilidadeMutacao = probabilidadeMutacao;
-        tr.start();
         inicializarPopulacao(tamanhoPopulacao, intervalo, precisao);
     }
     
@@ -33,11 +32,13 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
                 remoteObjectReference.recebe(this.melhoresIndividuos(qntIndividuos));
                 populacao.removeAll(this.melhoresIndividuos(qntIndividuos));
                 // Espera receber individuos
-                synchronized(tr){
-                    tr.wait();
+                if(individuosRecebidos.isEmpty()){
+                    synchronized(tr){
+                        tr.wait();
+                    }
                 }
                 populacao.addAll(this.individuosRecebidos);
-                
+                individuosRecebidos = new ArrayList<>();
             }
 //            System.out.println("Geração ("+numGeracoes+")");
             
@@ -125,11 +126,8 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     
     @Override
     public void recebe(ArrayList<Individuo> individuos) throws RemoteException {
-        individuosRecebidos = new ArrayList<>();
         individuosRecebidos.addAll(individuos);
-        synchronized(this){
-            notify();
-        }
+        tr.start();
         
     }
 
