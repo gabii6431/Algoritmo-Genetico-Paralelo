@@ -80,9 +80,9 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         for(int i = 0; i < cromossomo.length; ++i) {
             System.out.print(" "+cromossomo[i]);
         }
-        System.out.printf(" Fenótipo = %."+precisao+"f",getFenotipo());
+        System.out.printf(" Fenotipo = %."+precisao+"f",getFenotipo());
         
-        System.out.printf(" Aptidão = %."+precisao+"f",getAptidao());
+        System.out.printf(" Aptidao = %."+precisao+"f",getAptidao());
         
         System.out.printf("f(x) = %."+precisao+"f",funcao());
         
