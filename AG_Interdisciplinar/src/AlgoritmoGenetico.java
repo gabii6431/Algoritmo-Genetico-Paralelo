@@ -14,54 +14,74 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     
     private ArrayList<Individuo> populacao;
     private int probabilidadeMutacao;
+    private boolean individuosProntos;
     private ArrayList<Individuo> individuosRecebidos;
+    private ArrayList<Individuo> individuosAEnviar;
+    private Individuo melhorIndividuo;
+
     ThreadVerifica tr = new ThreadVerifica();
+    Migracao remoteObjectReference;
     
     
-    public AlgoritmoGenetico(int tamanhoPopulacao,int probabilidadeMutacao,double intervalo[],int precisao) throws RemoteException, MalformedURLException{
-        System.setProperty("java.rmi.server.hostname", "172.16.104.67" );
-	   
-        AlgoritmoGenetico ag = new AlgoritmoGenetico();
-        Naming.rebind("rmi://172.16.104.67/AlgoritmoGenetico", ag);
+    public AlgoritmoGenetico(int tamanhoPopulacao,int probabilidadeMutacao,double intervalo[],int precisao, String ipOrigem, String ipDestino) throws RemoteException, MalformedURLException, NotBoundException{
         
-        populacao = new ArrayList<Individuo>();
-        individuosRecebidos = new ArrayList<Individuo>();
         this.probabilidadeMutacao = probabilidadeMutacao;
+        this.individuosProntos = false;
+        this.populacao = new ArrayList<Individuo>();
+        this.individuosRecebidos = new ArrayList<Individuo>();
+        this.individuosAEnviar = new ArrayList<Individuo>();
+        
         inicializarPopulacao(tamanhoPopulacao, intervalo, precisao);
+        
+        configRMI(ipOrigem, ipDestino);
     }
 
     public AlgoritmoGenetico() throws RemoteException{    
     }
     
-    public void evoluir(int numGeracoes, int qntIndividuos,/*String ilhaDestino,*/ int instanteMigracao) throws NotBoundException, MalformedURLException, RemoteException, InterruptedException {
-        Migracao remoteObjectReference = (Migracao) Naming.lookup("rmi://172.16.104.108/AlgoritmoGenetico");
+    public void configRMI(String ipOrigem, String ipDestino) throws RemoteException, MalformedURLException, NotBoundException{
+        System.setProperty("java.rmi.server.hostname", ipOrigem );
+	   
+        AlgoritmoGenetico ag = new AlgoritmoGenetico();
+        Naming.rebind("rmi://"+ipOrigem+"/AlgoritmoGenetico", ag);
+        
+        remoteObjectReference = (Migracao) Naming.lookup("rmi://"+ipDestino+"/AlgoritmoGenetico");
+    }
+    
+    public void evoluir(int numGeracoes, int qntIndividuos,int instanteMigracao) throws NotBoundException, MalformedURLException, RemoteException, InterruptedException {
         Operacoes op = new Operacoes();
         int geracaoAtual = 0;
+        int momentoMigracao = instanteMigracao;
+        
         while(geracaoAtual <= numGeracoes) {
-            System.out.println("Geracao: "+geracaoAtual);
+            
             ArrayList<Individuo> novaPopulacao = new ArrayList<Individuo>();
-            if(geracaoAtual == instanteMigracao){
-                System.out.println("Entrou aqui");
-                instanteMigracao += instanteMigracao;
-                remoteObjectReference.recebe("Oi gabi");
-//                remoteObjectReference.recebe(this.melhoresIndividuos(qntIndividuos));
-//                populacao.removeAll(this.melhoresIndividuos(qntIndividuos));
-                // Espera receber individuos
-//                if(individuosRecebidos.isEmpty()){
-//                    System.out.println("Esta dormindo");
-//                    synchronized(tr){
-//                        tr.wait();
-//                    }
-//                }
-//                populacao.addAll(this.individuosRecebidos);
-//                individuosRecebidos = new ArrayList<>();
-            }
-//            System.out.println("Geração ("+numGeracoes+")");
+            
+            if(geracaoAtual == momentoMigracao){ // Inicio migração
+                momentoMigracao += instanteMigracao;
+                
+                this.individuosAEnviar = this.melhoresIndividuos(qntIndividuos);
+                this.individuosProntos = true;
+                populacao.removeAll(this.individuosAEnviar);
+                
+                while(!remoteObjectReference.verificaIndividuosProntos()){
+                    Thread.sleep(3000);
+                }
+                
+                this.individuosRecebidos = remoteObjectReference.recebeIndividuos();
+                
+                System.out.println("Acordou");
+                populacao.addAll(this.individuosRecebidos);
+//                
+            } // Fim da Migração
+            
+            
+            System.out.println("Geracao ("+geracaoAtual+")");
             
             while(novaPopulacao.size() < populacao.size()) {
-                IndividuoBinario i1 = (IndividuoBinario) op.roleta(populacao);
-                IndividuoBinario i2 = (IndividuoBinario) op.roleta(populacao);
-                IndividuoBinario filhos[] = op.crossover(i1, i2);
+                Individuo i1 = (Individuo) op.roleta(populacao);
+                Individuo i2 = (Individuo) op.roleta(populacao);
+                Individuo filhos[] = op.crossover(i1, i2);
                 op.mutacao(filhos[0], probabilidadeMutacao);
                 op.mutacao(filhos[1], probabilidadeMutacao);
                 novaPopulacao.add(filhos[0]);
@@ -70,10 +90,21 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
             populacao = novaPopulacao;
             geracaoAtual++;
         }
+        encontraMelhorIndividuo();
     }
     
+    
+    public ArrayList<Individuo> recebeIndividuos() throws RemoteException{
+        this.individuosProntos = false;
+        return this.individuosAEnviar;
+    }
+    
+    public boolean verificaIndividuosProntos() throws RemoteException{
+        return this.individuosProntos;
+    }
 
     public ArrayList<Individuo> melhoresIndividuos(int qtdIndividuos){
+        System.out.println("Metodo 2: "+individuosRecebidos.size());
         ArrayList<Individuo> melhoresIndividuos = new ArrayList<>();
         Collections.sort(populacao, (a,b) -> a.getAptidao() < b.getAptidao() ? -1: a.getAptidao() > b.getAptidao() ? 1:0);
 
@@ -83,11 +114,6 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
         return melhoresIndividuos;
     }
     
-    public void mostrarPopulacao() {
-        for(Individuo i:populacao) {
-            i.mostrarIndividuo();
-        }
-    }
     
     private void inicializarPopulacao(int tamanhoPopulacao,double intervalo[],int precisao) {
         Random r = new Random();
@@ -101,7 +127,7 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
             for(int j = 0; j < tamanhoCromossomo; ++j) {
                 cromossomo[j] = r.nextInt(2);
             }
-            IndividuoBinario individuo = new IndividuoBinario(cromossomo, intervalo, precisao);
+            Individuo individuo = new Individuo(cromossomo, intervalo, precisao);
             populacao.add(individuo);
         }
     }
@@ -110,55 +136,71 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
         return Math.log10(valor)/Math.log10(2);
     } 
     
-//    @Override
-//    public void recebe(ArrayList<Individuo> individuos) throws RemoteException {
-//        individuosRecebidos.addAll(individuos);
-//        System.out.println("Recebeu individuos");
-//        tr.start();
-//        
-//    }
     
-    public void recebe(String txt) throws RemoteException {
-//        individuosRecebidos.addAll(individuos);
-        System.out.println("Mensagem> "+txt);
-        tr.start();
-        
+    private void encontraMelhorIndividuo(){
+        int index = 0;
+        double maxValue = 0;
+        for (int i = 0; i < populacao.size(); i++) {
+            if(populacao.get(i).getAptidao() > maxValue){
+                index = i;
+                maxValue = populacao.get(i).getAptidao();
+            }
+        }
+        melhorIndividuo = populacao.get(index);
     }
     
+    public void imprimeMelhorIndividuo(){
+        System.out.println("Melhor Individuo: ");
+        melhorIndividuo.mostrarIndividuo();
+    }
     
-    
+    public void mostrarPopulacao() {
+        for(Individuo i:populacao) {
+            i.mostrarIndividuo();
+        }
+    }
     
     public static void main(String args[]) {
-        int qntIndividuos = 50;
-        String ilhaDestino = "";
-        int instanteMigracao = 5;
-        
         AlgoritmoGenetico ag;
+        
+        System.out.println("Digite um numero para continuar:");
         int n=0; 
         if(n==0){
             Scanner teclado = new Scanner(System.in);
             n = teclado.nextInt();
         }
+        
+        int qntIndividuos = 50;
+        String ipOrigem = "";
+        String ipDestino = "";
+        int instanteMigracao = 5;
+        
+        int tamanhoPopulacao = 100;
+        int probabilidadeMutacao = 7;
+        double[] intervalo = new double[]{-1,2};
+        int precisao = 4;
+        int numGeracoes = 1000;
+        
         try {
-            ag = new AlgoritmoGenetico(100, 7, new double[]{-1,2}, 7);
+            ag = new AlgoritmoGenetico(tamanhoPopulacao, probabilidadeMutacao,intervalo, precisao, ipOrigem, ipDestino);
             ag.mostrarPopulacao();
-            ag.evoluir(2000, qntIndividuos, instanteMigracao);
+            System.out.println("\nEvoluindo..\n");
+            ag.evoluir(numGeracoes, qntIndividuos, instanteMigracao);
             ag.mostrarPopulacao();
+            System.out.println("\n");
+            ag.imprimeMelhorIndividuo();
         } catch (RemoteException ex) {
-            System.out.println("Erro1");
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NotBoundException ex) {
-            System.out.println("Erro2");
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(AlgoritmoGenetico.class.getName()).log(Level.SEVERE, null, ex);
         } catch (MalformedURLException ex) {
-            System.out.println("Erro3");
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(AlgoritmoGenetico.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NotBoundException ex) {
+            Logger.getLogger(AlgoritmoGenetico.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InterruptedException ex) {
-            System.out.println("Erro4");
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(AlgoritmoGenetico.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        
     }
 
+    
+    
 }
+

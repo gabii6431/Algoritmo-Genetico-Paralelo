@@ -10,6 +10,7 @@
 public class ThreadVerifica extends Thread{
     public void run(){
         synchronized(this){
+            System.out.println("entrou thread");
             notify();
         }
     }

@@ -1,22 +1,22 @@
-
+import java.io.Serializable;
 import java.util.Locale;
 
 /* Classe que representa um indivíduo cujo:
         (i) cromossomo é um vetor binário.
         (ii) fenótipo é um valor inteiro.
 */
-public class IndividuoBinario extends Individuo<int[],Double> {
+public class Individuo implements Serializable {
     
     private double intervalo[];
     private int precisao;
+    private int[] cromossomo;
     
-    public IndividuoBinario(int[] cromossomo, double[] intervalo, int precisao) {
-        super(cromossomo);
+    public Individuo(int[] cromossomo, double[] intervalo, int precisao) {
+        this.cromossomo = cromossomo;
         this.intervalo = intervalo;
         this.precisao = precisao;
     }
     
-    @Override
     public Double getFenotipo() {
         int xChapeu = 0;
         double fenotipo;
@@ -30,7 +30,6 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         fenotipo = intervalo[0] + 
                 ((intervalo[1]-intervalo[0])/(Math.pow(2,n)-1))*xChapeu;
         fenotipo = Double.valueOf(String.format("%."+precisao+"f", fenotipo));
-        //System.out.println(fenotipo);
         return fenotipo;
     }
     
@@ -38,7 +37,6 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         return intervalo;
     }
     
-    @Override
     public double getAptidao() {
         double x = getFenotipo();
         return 1/(Math.pow(2,(x*Math.sin(10*x*Math.PI)+1)));
@@ -55,12 +53,12 @@ public class IndividuoBinario extends Individuo<int[],Double> {
     }
     
     // Método para clonar um indivíduo.
-    public IndividuoBinario clonar() {
+    public Individuo clonar() {
         int cromossomoClonado[] = new int[cromossomo.length];
         for(int i = 0; i < cromossomo.length; ++i) {
             cromossomoClonado[i] = cromossomo[i];
         }
-        IndividuoBinario clone = new IndividuoBinario(cromossomoClonado, 
+        Individuo clone = new Individuo(cromossomoClonado, 
                 intervalo,precisao);
         return clone;
     }
@@ -80,11 +78,10 @@ public class IndividuoBinario extends Individuo<int[],Double> {
         for(int i = 0; i < cromossomo.length; ++i) {
             System.out.print(" "+cromossomo[i]);
         }
-        System.out.printf(" Fenotipo = %."+precisao+"f",getFenotipo());
         
-        System.out.printf(" Aptidao = %."+precisao+"f",getAptidao());
+        System.out.printf(" f(x) = %."+precisao+"f",funcao());
         
-        System.out.printf("f(x) = %."+precisao+"f",funcao());
+        System.out.printf(" x = %."+precisao+"f",getFenotipo());
         
         System.out.println();
     }
