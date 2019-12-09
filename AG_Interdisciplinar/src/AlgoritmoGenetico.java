@@ -18,9 +18,8 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     private ArrayList<Individuo> individuosRecebidos;
     private ArrayList<Individuo> individuosAEnviar;
     private Individuo melhorIndividuo;
-
-    ThreadVerifica tr = new ThreadVerifica();
     Migracao remoteObjectReference;
+    int geracaoAtual = 0;
     
     
     public AlgoritmoGenetico(int tamanhoPopulacao,int probabilidadeMutacao,double intervalo[],int precisao) throws RemoteException, MalformedURLException, NotBoundException{
@@ -32,22 +31,19 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
         this.individuosAEnviar = new ArrayList<Individuo>();
         
         inicializarPopulacao(tamanhoPopulacao, intervalo, precisao);
-        
-        //configRMI(ipOrigem, ipDestino);
     }
 
-    public void configRMI(String ipOrigem, String ipDestino) throws RemoteException, MalformedURLException, NotBoundException{
-        
-       
-    }
     
     public void evoluir(int numGeracoes, int qntIndividuos,int instanteMigracao) throws NotBoundException, MalformedURLException, RemoteException, InterruptedException {
-        remoteObjectReference = (Migracao) Naming.lookup("rmi://10.14.160.247/AlgoritmoGenetico");
+        // IP de destino
+        remoteObjectReference = (Migracao) Naming.lookup("rmi://10.14.161.162/AlgoritmoGenetico");
+        System.out.println("Entrou aqui");
         Operacoes op = new Operacoes();
-        int geracaoAtual = 0;
+        
         int momentoMigracao = instanteMigracao;
         
         while(geracaoAtual <= numGeracoes) {
+            
             
             ArrayList<Individuo> novaPopulacao = new ArrayList<Individuo>();
             
@@ -58,14 +54,19 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
                 this.individuosProntos = true;
                 populacao.removeAll(this.individuosAEnviar);
                 
-               
+                
                 System.out.println("Tamanho individuos a enviar: "+this.individuosAEnviar.size());
                 
                 while(!remoteObjectReference.verificaIndividuosProntos()){
                     Thread.sleep(1000);
                 }
                 
-                this.individuosRecebidos = remoteObjectReference.recebeIndividuos();
+                this.individuosRecebidos = remoteObjectReference.recebeIndividuos(geracaoAtual);
+                
+                while(this.individuosProntos){
+                    Thread.sleep(1000);
+                }
+
                 System.out.println("Tamanho individuos Recebidos: "+this.individuosRecebidos.size());
                 
                 populacao.addAll(this.individuosRecebidos);
@@ -93,9 +94,9 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     }
     
     
-    public ArrayList<Individuo> recebeIndividuos() throws RemoteException{
+    public ArrayList<Individuo> recebeIndividuos(int geracao) throws RemoteException{
+        System.out.println("Chamou na geracao: "+geracao);
         this.individuosProntos = false;
-        System.out.println("Entrou recebe individuos");
         return this.individuosAEnviar;
     }
     
@@ -162,14 +163,13 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
     public static void main(String args[]) {
         AlgoritmoGenetico ag;
         
-        System.out.println("Digite um numero para continuar:");
+        System.out.println("Tecle ENTER para continuar:");
         
-        
-        int qntIndividuos = 50;
+        int qntIndividuos = 5;
         int instanteMigracao = 15;
         
-        int tamanhoPopulacao = 100;
-        int probabilidadeMutacao = 7;
+        int tamanhoPopulacao = 50;
+        int probabilidadeMutacao = 8;
         double[] intervalo = new double[]{-1,2};
         int precisao = 4;
         int numGeracoes = 500;
@@ -177,21 +177,21 @@ public class AlgoritmoGenetico extends UnicastRemoteObject implements Migracao{
         try {
             ag = new AlgoritmoGenetico(tamanhoPopulacao, probabilidadeMutacao,intervalo, precisao);
             
+            // IP de origem
             System.setProperty("java.rmi.server.hostname", "10.14.160.9" );
-	   
             Naming.rebind("rmi://10.14.160.9/AlgoritmoGenetico", ag);
         
-            int n=0; 
-            if(n==0){
-                Scanner teclado = new Scanner(System.in);
-                n = teclado.nextInt();
-            }
+            Scanner teclado = new Scanner(System.in);
+            String lock = teclado.nextLine();
+            
             ag.mostrarPopulacao();
             System.out.println("\nEvoluindo..\n");
+            
             ag.evoluir(numGeracoes, qntIndividuos, instanteMigracao);
             ag.mostrarPopulacao();
             System.out.println("\n");
             ag.imprimeMelhorIndividuo();
+            
         } catch (RemoteException ex) {
             Logger.getLogger(AlgoritmoGenetico.class.getName()).log(Level.SEVERE, null, ex);
         } catch (MalformedURLException ex) {
